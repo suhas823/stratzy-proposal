@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stratzy Complaint Audit</title>
+<meta name="description" content="Hand-coded analysis of 270 Stratzy Play Store complaints, by Suhas Sutre.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: one reading column of an audit report, with the chart and tables allowed to run a little wider. */
+:root{
+  --paper:#F3F6F4; --surface:#FFFFFF; --ink:#15201C; --muted:#56675F; --rule:#D3DCD7;
+  --then:#9AA9A2; --now:#3A3FBF; --now-soft:#E6E7FA; --flag:#8A5A00; --flag-soft:#F6EBD3;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1513; --surface:#161E1B; --ink:#E2E9E5; --muted:#93A39B; --rule:#27322E;
+    --then:#5F6F68; --now:#A2A6FF; --now-soft:#22244A; --flag:#E5B65A; --flag-soft:#33280F; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1513; --surface:#161E1B; --ink:#E2E9E5; --muted:#93A39B; --rule:#27322E;
+  --then:#5F6F68; --now:#A2A6FF; --now-soft:#22244A; --flag:#E5B65A; --flag-soft:#33280F; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:780px;margin:0 auto;padding-block:48px 80px}
+h1,h2,h3{font-family:var(--display);font-stretch:82%;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:clamp(38px,6vw,56px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:clamp(25px,3.4vw,31px);font-weight:750;margin-top:56px}
+h3{font-size:19px;font-weight:700;font-stretch:90%}
+p{margin:0;max-width:66ch}
+p+p{margin-top:12px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:20px;line-height:1.5;margin-top:18px}
+.lede b{font-weight:600}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.funnel{display:flex;flex-wrap:wrap;gap:0;margin-top:28px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.funnel div{flex:1 1 140px;padding:14px 14px 14px 0}
+.funnel div+div{padding-left:14px;border-left:1px solid var(--rule)}
+.funnel .n{font-family:var(--display);font-stretch:75%;font-weight:750;font-size:30px;font-variant-numeric:tabular-nums;line-height:1}
+.funnel .l{font-size:13.5px;color:var(--muted);margin-top:6px;line-height:1.35}
+.section-sub{margin-top:12px;color:var(--muted)}
+.section-sub a,footer a{color:var(--now)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:18px}
+.key{display:inline-flex;align-items:center;gap:7px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.chart{margin-top:10px;overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:560px;height:auto}
+.note{font-size:14.5px;color:var(--muted);margin-top:12px}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.04em;padding:1px 7px;border-radius:999px;background:var(--now-soft);color:var(--now);vertical-align:2px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-top:22px}
+.stat{border-top:2px solid var(--ink);padding-top:10px;min-width:0}
+.stat .n{font-family:var(--display);font-stretch:75%;font-weight:750;font-size:36px;font-variant-numeric:tabular-nums;line-height:1}
+.stat p{font-size:15px;margin-top:6px}
+.quotes{display:grid;gap:14px;margin-top:22px}
+.q{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px;display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:start}
+.q .tag{font-family:var(--mono);font-size:12px;color:var(--now);line-height:1.4}
+.q .tag span{display:block;color:var(--muted);margin-top:4px}
+.q blockquote{margin:0;font-style:italic}
+.q .meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px;font-style:normal}
+.tbl{overflow-x:auto;margin-top:20px;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14.5px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tbody tr:last-child td{border-bottom:none}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+th.num{text-align:right}
+.up{color:var(--now);font-weight:600}
+.callout{margin-top:22px;background:var(--flag-soft);border-radius:6px;padding:16px 18px}
+.callout .eyebrow{color:var(--flag)}
+.callout p{margin-top:6px}
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:22px}
+.pick{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:18px;min-width:0}
+.pick p{font-size:15.5px;margin-top:8px}
+.pick .covers{font-family:var(--mono);font-size:12px;color:var(--now);margin-top:10px}
+ul{margin:12px 0 0;padding-left:20px;max-width:66ch}
+li{margin-bottom:6px}
+footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--rule);font-size:14px;color:var(--muted)}
+@media (max-width:560px){
+  .q{grid-template-columns:1fr;gap:8px}
+  .funnel div+div{border-left:none;padding-left:0}
+  .funnel div{flex-basis:45%}
+}
+
+body{margin:0}
+img{max-width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Play Store review audit · May 2021 to Oct 2026</div>
+    <h1>Stratzy Complaint Audit</h1>
+    <p class="lede">Stratzy has largely fixed its app. Login, crash and broker complaints have almost disappeared. What users complain about now is money: <b>the gap between what the app shows and what lands in their account</b>, algos that don't execute as designed, and losses deeper than they expected.</p>
+    <div class="funnel" aria-label="Data funnel">
+      <div><div class="n">1,249</div><div class="l">Play Store reviews collected</div></div>
+      <div><div class="n">1,030</div><div class="l">after removing 219 exact duplicates</div></div>
+      <div><div class="n">778</div><div class="l">with 5 or more words</div></div>
+      <div><div class="n">270</div><div class="l">complaints (1–3 stars), each coded by hand</div></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Complaints have moved from app problems to money and trust</h2>
+    <p class="section-sub">Share of complaints mentioning each problem, comparing 2021–24 (198 complaints) with 2025–26 (72). Lines show 95% Wilson intervals. One complaint can mention several problems.</p>
+    <div class="legend">
+      <span class="key"><span class="dot" style="background:var(--then)"></span>2021–24</span>
+      <span class="key"><span class="dot" style="background:var(--now)"></span>2025–26</span>
+      <span class="key"><span class="pill">clear shift</span> intervals don't overlap</span>
+    </div>
+    <div class="chart" id="chart" role="img" aria-label="Paired dot chart of complaint shares by era"></div>
+    <p class="note">Three shifts are clear even with only 72 recent complaints: crashes and lag fell, while "risk worse than expected" and "can't understand the app" rose. The other rising themes point the same way, but their intervals still overlap.</p>
+  </section>
+
+  <section>
+    <h2>"I lost money" is the biggest complaint, but rarely the whole story</h2>
+    <div class="stats">
+      <div class="stat"><div class="n">44%</div><p>of complaints are about losses or poor returns (120 of 270). That alone isn't a product finding, since markets lose money too.</p></div>
+      <div class="stat"><div class="n">55 of 120</div><p>loss complaints also name a cause: the numbers didn't match, the order didn't go through, or the risk was hidden.</p></div>
+      <div class="stat"><div class="n">77%</div><p>of all complaints contain at least one problem Stratzy's product or ops team could act on.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Inside algo complaints since 2025, three problems dominate</h2>
+    <p class="section-sub">30 complaints since January 2025 are clearly about algos. Small numbers, so read these as direction, not precise shares.</p>
+    <div class="quotes">
+      <div class="q">
+        <div class="tag">Numbers don't match<span>10 of 30 · 33%</span></div>
+        <div><blockquote>"Your algo calendar shows profit, but my actual demat account shows loss."</blockquote><div class="meta">1 star · Feb 2026</div></div>
+      </div>
+      <div class="q">
+        <div class="tag">Didn't execute<span>11 of 30 · 37%</span></div>
+        <div><blockquote>"not even single order was executed except for 1st 2 days"</blockquote><div class="meta">1 star · Mar 2026</div></div>
+      </div>
+      <div class="q">
+        <div class="tag">Worse than expected<span>9 of 30 · 30%</span></div>
+        <div><blockquote>"I do expect drawdown but not like this"</blockquote><div class="meta">2 stars · Aug 2026 · Fixed RR buying algo</div></div>
+      </div>
+    </div>
+    <p class="note">The single most-upvoted execution complaint (92 upvotes, Feb 2024) reports option entries taken 10–20% beyond the stated levels.</p>
+  </section>
+
+  <section>
+    <h2>Replies are now much faster, and mostly about market risk</h2>
+    <p class="section-sub">Stratzy replied to 96% of complaints. Reply types are tagged by keyword, so treat them as rough.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Developer replies</th><th class="num">2021–24</th><th class="num">2025–26</th></tr></thead>
+        <tbody>
+          <tr><td>Median time to reply</td><td class="num">42 hours</td><td class="num up">1.7 hours</td></tr>
+          <tr><td>Points the user to email or Help &amp; Support</td><td class="num">78%</td><td class="num up">94%</td></tr>
+          <tr><td>Explains with market risk or "stay invested long term"</td><td class="num">24%</td><td class="num up">64%</td></tr>
+          <tr><td>Mentions a fix, a release or a resolved issue</td><td class="num">16%</td><td class="num up">1%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <div class="eyebrow">A question I&#39;d explore</div>
+      <p>When a user says the app's numbers don't match their account, 72% of replies explain market risk, for example that profit and loss are inherent to markets. I'd want to know whether these users are asking about risk, or asking how their own result was calculated. If it's the second, a reply that walks through their actual trades may land better.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>One burst of praise is set aside</h2>
+    <p>115 of the 508 praise reviews arrived in one quarter, July to September 2024. That batch contains 66 of the 79 reviews ending in a double full stop, and almost all the "AI algorithms are top-notch" praise. This audit doesn't claim those reviews are fake. It sets them aside when describing what users value, so the overall star rating is a weak guide on its own.</p>
+    <p>Outside that batch, 393 praise reviews mostly mention ease of use (30%) and the quality of ideas and research (24%). Only 15% mention returns or profit.</p>
+  </section>
+
+  <section>
+    <h2>What this points to</h2>
+    <p class="section-sub">Two problems a product intern could own, both outside the approved algo logic. Both are written up in the <a href="prd.html">My Results PRD</a>.</p>
+    <div class="picks">
+      <div class="pick">
+        <h3>Show users their own fills</h3>
+        <p>Put the algo's model trades next to what actually executed in the user's broker account: missed orders, entry price gap, slippage, fees. The dashboard stops being a claim the user has to trust.</p>
+        <div class="covers">Covers: numbers don't match · didn't execute · trust</div>
+      </div>
+      <div class="pick">
+        <h3>Price the risk before deploying</h3>
+        <p>Before a user deploys, show the algo's worst historical drawdown in rupees on their own capital, the stop-loss level, and whether losses can trigger a fund top-up. Surprise is the complaint, not the loss.</p>
+        <div class="covers">Covers: worse than expected · can't understand</div>
+      </div>
+    </div>
+    <p class="note">Check with compliance before letting users set their own loss caps. Under SEBI's retail algo framework, a change to an approved algo needs fresh exchange approval, and a user-set cap may count as one.</p>
+  </section>
+
+  <section>
+    <h2>Codebook and counts</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Problem</th><th>Who can fix it</th><th class="num">All</th><th class="num">2021–24</th><th class="num">2025–26</th></tr></thead>
+        <tbody id="codebook"></tbody>
+      </table>
+    </div>
+    <h3 style="margin-top:28px">Limits</h3>
+    <ul>
+      <li>One coder (Claude) labelled all 270 complaints. A 30-row self-check changed 8 rows, mostly a missing loss tag where a cause was also named, so the loss and scam codes were re-swept across all 270. This is still not an independent check.</li>
+      <li>Play Store only. Public reviews skew negative and over-represent people who lost money.</li>
+      <li>Only 72 complaints are from 2025–26, so recent shares carry wide intervals.</li>
+      <li>82 complaints don't say which product they're about, so the algo-only figures undercount.</li>
+      <li>Reply types are keyword tags, not hand codes.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>Prepared by Suhas Sutre from public Google Play reviews of the Stratzy app, collected 23 Oct 2026. Complaints were coded with Claude (AI) against a fixed codebook, then self-checked on a 30-row sample. User quotes are short excerpts, unedited, shown without names. Allegations in reviews are users' claims and are reported as perceptions, not findings of fact.</p>
+  </footer>
+</div>
+
+<script>
+const rows = [
+  {g:"App problems", k:"Crashes, blank screens, lag", a:[18.2,13.4,24.1], b:[4.2,1.4,11.5], clear:true},
+  {g:"App problems", k:"Login, OTP, sign-up", a:[11.6,7.9,16.8], b:[2.8,0.8,9.6]},
+  {g:"App problems", k:"Broker connection", a:[7.1,4.3,11.5], b:[2.8,0.8,9.6]},
+  {g:"App problems", k:"Support didn't help", a:[15.2,10.8,20.8], b:[13.9,7.7,23.7]},
+  {g:"Money and trust", k:"Complains of losses", a:[41.9,35.3,48.9], b:[51.4,40.1,62.6]},
+  {g:"Money and trust", k:"Pricing, plans, refunds", a:[21.7,16.5,28.0], b:[31.9,22.3,43.4]},
+  {g:"Money and trust", k:"Numbers don't match account", a:[13.6,9.5,19.1], b:[19.4,12.0,30.0]},
+  {g:"Money and trust", k:"Algo didn't execute", a:[9.6,6.2,14.5], b:[18.1,10.9,28.5]},
+  {g:"Money and trust", k:"Risk worse than expected", a:[4.5,2.4,8.4], b:[15.3,8.8,25.3], clear:true},
+  {g:"Money and trust", k:"Can't understand the app", a:[3.0,1.4,6.5], b:[13.9,7.7,23.7], clear:true},
+  {g:"Money and trust", k:"Scam or fake accusation", a:[11.1,7.5,16.2], b:[19.4,12.0,30.0]},
+];
+(function draw(){
+  const W=760, left=230, right=40, rowH=34, groupGap=34, top=30;
+  const xmax=60, x=v=>left+(v/xmax)*(W-left-right);
+  let y=top, out=[], lastG=null;
+  const H = top + rows.length*rowH + 2*groupGap + 30;
+  // grid
+  for(let t=0;t<=xmax;t+=10){
+    out.push(`<line x1="${x(t)}" x2="${x(t)}" y1="${top-8}" y2="${H-24}" style="stroke:var(--rule);stroke-width:1"/>`);
+    out.push(`<text x="${x(t)}" y="${H-8}" text-anchor="middle" style="font-family:var(--mono);font-size:11px;fill:var(--muted)">${t}%</text>`);
+  }
+  rows.forEach(r=>{
+    if(r.g!==lastG){
+      y+= lastG===null?0:groupGap*0.4;
+      out.push(`<text x="0" y="${y+4}" style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;fill:var(--muted)">${r.g.toUpperCase()}</text>`);
+      y+=groupGap*0.6; lastG=r.g;
+    }
+    const ya=y-6, yb=y+6;
+    out.push(`<text x="0" y="${y+5}" style="font-family:var(--body);font-size:14px;fill:var(--ink)">${r.k}</text>`);
+    out.push(`<line x1="${x(r.a[1])}" x2="${x(r.a[2])}" y1="${ya}" y2="${ya}" style="stroke:var(--then);stroke-width:2"/>`);
+    out.push(`<line x1="${x(r.b[1])}" x2="${x(r.b[2])}" y1="${yb}" y2="${yb}" style="stroke:var(--now);stroke-width:2"/>`);
+    out.push(`<circle cx="${x(r.a[0])}" cy="${ya}" r="5" style="fill:var(--then)"/>`);
+    out.push(`<circle cx="${x(r.b[0])}" cy="${yb}" r="5.5" style="fill:var(--now)"/>`);
+    if(r.clear){
+      const tx=Math.max(x(r.a[2]),x(r.b[2]))+10;
+      out.push(`<text x="${tx}" y="${y+4}" style="font-family:var(--mono);font-size:10.5px;fill:var(--now)">clear shift</text>`);
+    }
+    y+=rowH;
+  });
+  document.getElementById("chart").innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${out.join("")}</svg>`;
+})();
+
+const codebook = [
+  ["Complains of losses or poor returns","Market + strategy design",120,83,37],
+  ["Pricing, plans, refunds, cancellation","Stratzy business",66,43,23],
+  ["App's numbers don't match my account","Stratzy product (reporting)",41,27,14],
+  ["Support didn't help","Stratzy ops",40,30,10],
+  ["Crashes, blank screens, lag","Stratzy engineering",39,36,3],
+  ["Scam or fake accusation","A consequence, not a cause",36,22,14],
+  ["Algo didn't execute as designed","Stratzy execution + broker",32,19,13],
+  ["Login, OTP, sign-up","Stratzy engineering",25,23,2],
+  ["Risk worse than I was led to expect","Stratzy product (disclosure)",20,9,11],
+  ["Broker connection","Stratzy engineering + brokers",16,14,2],
+  ["Can't understand the app or algo","Stratzy product",16,6,10],
+  ["Feature request","Stratzy product",10,8,2],
+  ["Vague or off-topic","n/a",23,18,5],
+];
+const pct=(k,n)=>Math.round(k/n*100)+"%";
+document.getElementById("codebook").innerHTML = codebook.map(r=>
+  `<tr><td>${r[0]}</td><td class="muted">${r[1]}</td><td class="num">${r[2]}</td><td class="num">${r[3]} <span class="muted">(${pct(r[3],198)})</span></td><td class="num">${r[4]} <span class="muted">(${pct(r[4],72)})</span></td></tr>`).join("");
+</script>
+</body>
+</html>
